@@ -15,7 +15,13 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({ origin: "*" }));
 
 //middleware
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString(); // save raw body for crypto hash
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 
 //routes

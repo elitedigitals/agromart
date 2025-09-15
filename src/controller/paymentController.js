@@ -29,7 +29,7 @@ export const initDeposit = async (req, res) => {
         email: buyer.email,
         amount: amount * 100, // Paystack expects kobo
         metadata: { buyerId: buyer._id.toString() },
-        callback_url: "http://localhost:5000/api/payment/deposit/verify"
+        callback_url: `${process.env.BASE_URL}/payment/callback`, // Redirect after payment
       },
       {
         headers: {
@@ -109,21 +109,29 @@ export const verifyDeposit = async (req, res) => {
  * This is the source of truth
  */
 // ========== WEBHOOK ==========
+import crypto from "crypto";
+import mongoose from "mongoose";
+import Transaction from "../models/transactionModel.js";
+import Wallet from "../models/walletModel.js";
+import Buyer from "../models/buyerModel.js";
+
 export const paystackWebhook = async (req, res) => {
   try {
-    // Verify signature
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+
+    // 🔑 Verify signature
     const hash = crypto
-      .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY)
-      .update(JSON.stringify(req.body))
+      .createHmac("sha512", secret)
+      .update(req.rawBody) // use rawBody instead of JSON.stringify(req.body)
       .digest("hex");
 
     if (hash !== req.headers["x-paystack-signature"]) {
-      return res.status(401).json({ message: "Invalid signature" });
+      console.error("❌ Invalid Paystack signature");
+      return res.sendStatus(401);
     }
 
-    const event = req.body.event;
-    const data = req.body.data;
-
+    const { event, data } = req.body;
+    console.log("⚠️ Webhook triggered:", req.body.event);
     if (event === "charge.success") {
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -132,47 +140,47 @@ export const paystackWebhook = async (req, res) => {
         const buyer = await Buyer.findOne({ email: data.customer.email }).session(session);
         if (!buyer) throw new Error("Buyer not found");
 
-        // Check if transaction already exists (Paystack may send duplicates)
-        let transaction = await Transaction.findOne({ reference: data.reference }).session(session);
-
-        if (!transaction) {
-          // Create new successful transaction
-          transaction = await Transaction.create(
-            [
-              {
-                user: buyer._id,
-                userType: "Buyer",
-                reference: data.reference,
-                type: "deposit",
-                amount: data.amount / 100,
-                status: "success",
-              },
-            ],
-            { session }
-          );
-
-          console.log(`[WEBHOOK] New transaction recorded: ${data.reference}`);
-        } else if (transaction.status !== "success") {
-          // Update existing transaction if it was still pending
-          transaction.status = "success";
-          await transaction.save({ session });
-          console.log(`[WEBHOOK] Transaction updated to success: ${data.reference}`);
-        } else {
-          console.log(`[WEBHOOK] Duplicate webhook ignored for reference: ${data.reference}`);
+        // Check if transaction already exists (idempotency)
+        const existingTxn = await Transaction.findOne({ reference: data.reference }).session(session);
+        if (existingTxn) {
+          console.log("⚠️ Transaction already processed:", data.reference);
+          await session.abortTransaction();
+          session.endSession();
+          return res.sendStatus(200);
         }
 
-        // Update wallet using $inc (atomic, concurrency-safe)
-        await Wallet.updateOne(
-          { user: buyer._id, userType: "Buyer" },
-          { $inc: { balance: data.amount / 100 } },
-          { upsert: true, session }
+        // Create transaction
+        await Transaction.create(
+          [
+            {
+              user: buyer._id,
+              userType: "Buyer",
+              reference: data.reference,
+              type: "deposit",
+              amount: data.amount / 100,
+              status: "success",
+            },
+          ],
+          { session }
         );
 
-        console.log(`[WEBHOOK] Wallet incremented by ${data.amount / 100} for Buyer: ${buyer._id}`);
+        // Update wallet
+        let wallet = await Wallet.findOne({ user: buyer._id, userType: "Buyer" }).session(session);
+        if (!wallet) {
+          wallet = await Wallet.create(
+            [{ user: buyer._id, userType: "Buyer", balance: 0 }],
+            { session }
+          );
+          wallet = wallet[0];
+        }
+
+        wallet.balance += data.amount / 100;
+        await wallet.save({ session });
 
         await session.commitTransaction();
         session.endSession();
 
+        console.log("✅ Wallet credited for:", buyer.email, data.amount / 100);
         return res.sendStatus(200);
       } catch (err) {
         await session.abortTransaction();
@@ -182,7 +190,8 @@ export const paystackWebhook = async (req, res) => {
       }
     }
 
-    res.sendStatus(200); // acknowledge other events
+    // For other Paystack events, just acknowledge
+    res.sendStatus(200);
   } catch (error) {
     console.error("Webhook error:", error.message);
     res.sendStatus(500);
