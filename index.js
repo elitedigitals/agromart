@@ -6,11 +6,13 @@ import sellerRoutes from "./src/routes/sellerRoute.js";
 import productRoutes from "./src/routes/productRoute.js";
 import buyerRoutes from "./src/routes/buyerRoute.js";
 import paymentRoutes from "./src/routes/paymentRoute.js";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.use(cors({ origin: "*" }));
 
 //middleware
 app.use(express.json());

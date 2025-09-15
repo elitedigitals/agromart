@@ -13,6 +13,6 @@ router.post("/deposit/init", protect, authorize("Buyer"), initDeposit);
 router.get("/deposit/verify", protect, authorize("Buyer"),  verifyDeposit);
 
  // Paystack webhook (MUST be public, no auth middleware)
-router.post("/webhook/paystack", express.json({ type: "application/json" }), paystackWebhook);
+router.post("/webhook/paystack", express.raw({ type: "application/json" }), paystackWebhook);
 
 export default router;
