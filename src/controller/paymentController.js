@@ -64,13 +64,13 @@ export const initDeposit = async (req, res) => {
   }
 };
 
-/**
- * ========== VERIFY DEPOSIT ==========
- * Frontend calls this after redirection
- */
+
+//   ========== VERIFY DEPOSIT ==========
+//  * Frontend calls this after redirection
+// Just verify with Paystack, no DB writes
 export const verifyDeposit = async (req, res) => {
   try {
-    const { reference } = req.query; // ✅ use query
+    const { reference } = req.query;
     if (!reference) {
       return res.status(400).json({ message: "Reference is required" });
     }
@@ -83,30 +83,23 @@ export const verifyDeposit = async (req, res) => {
     );
 
     const data = response.data.data;
-    const tx = await Transaction.findOne({ reference });
 
-    if (!tx) {
-      return res.status(404).json({ message: "Transaction not found" });
-    }
+    console.log(`[VERIFY] Paystack verification result: Ref ${reference}, Status: ${data.status}`);
 
-    if (data.status === "success" && tx.status !== "success") {
-      tx.status = "success";
-      await tx.save();
-      console.log(`[VERIFY] Transaction verified successfully: Ref ${reference}`);
-    } else {
-      console.log(`[VERIFY] Transaction status: ${data.status}, Ref ${reference}`);
-    }
-
-    return res.status(200).json({ status: data.status, transaction: tx });
+    // 🚨 Do NOT touch DB here, leave wallet & transaction update to webhook
+    return res.status(200).json({
+      status: data.status,
+      reference: data.reference,
+      amount: data.amount / 100,
+      gateway_response: data.gateway_response,
+    });
   } catch (error) {
     console.error("VerifyDeposit Error:", error.response?.data || error.message);
     res.status(500).json({ message: "Payment verification failed" });
   }
 };
 
-/**
- * This is the source of truth
- */
+//  * This is the source of truth 
 // ========== WEBHOOK ==========
 export const paystackWebhook = async (req, res) => {
   try {
