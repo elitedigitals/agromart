@@ -108,7 +108,7 @@ export const paystackWebhook = async (req, res) => {
     // 🔑 Verify Paystack signature
     const hash = crypto
       .createHmac("sha512", secret)
-      .update(req.rawBody) // must use raw body
+      .update(req.rawBody) // rawBody middleware is required
       .digest("hex");
 
     if (hash !== req.headers["x-paystack-signature"]) {
@@ -127,60 +127,82 @@ export const paystackWebhook = async (req, res) => {
       session.startTransaction();
 
       try {
-        // ✅ Find buyer by email
+        // ✅ Find buyer
         const buyer = await Buyer.findOne({ email: data.customer.email }).session(session);
         if (!buyer) {
-          console.error("❌ Buyer not found for email:", data.customer.email);
+          console.error("❌ Buyer not found:", data.customer.email);
           throw new Error("Buyer not found");
         }
-        console.log("✅ Buyer found:", buyer.email, "ID:", buyer._id);
 
-        // ✅ Check if transaction already exists
-        const existingTxn = await Transaction.findOne({ reference: data.reference }).session(session);
-        if (existingTxn) {
-          console.warn("⚠️ Transaction already processed:", data.reference);
-          await session.abortTransaction();
-          session.endSession();
-          return res.sendStatus(200);
-        }
-
-        // ✅ Convert Paystack amount from kobo → naira
         const nairaAmount = data.amount / 100;
-        console.log("💰 Amount from Paystack:", data.amount, "kobo =>", nairaAmount, "naira");
 
-        // ✅ Create new transaction record
-        const newTxn = await Transaction.create(
-          [
-            {
-              user: buyer._id,
-              userType: "Buyer",
-              reference: data.reference,
-              type: "deposit",
-              amount: nairaAmount,
-              status: "success",
-            },
-          ],
-          { session }
-        );
-        console.log("📝 Transaction created:", newTxn[0]);
+        // ✅ Find existing transaction
+        let existingTxn = await Transaction.findOne({ reference: data.reference }).session(session);
 
-        // ✅ Update or create wallet atomically
-        const updatedWallet = await Wallet.findOneAndUpdate(
-          { user: buyer._id, userType: "Buyer" },
-          { $inc: { balance: nairaAmount } }, // increment balance
-          { new: true, upsert: true, session }
-        );
+        if (existingTxn) {
+          if (existingTxn.status === "success") {
+            console.warn("⚠️ Transaction already processed successfully:", data.reference);
+            await session.abortTransaction();
+            session.endSession();
+            return res.sendStatus(200);
+          }
 
-        console.log("✅ Wallet updated:", {
-          user: buyer.email,
-          walletId: updatedWallet._id,
-          newBalance: updatedWallet.balance,
-        });
+          if (existingTxn.status === "pending" && data.status === "success") {
+            console.log("🔄 Updating pending transaction to success:", data.reference);
+
+            existingTxn.status = "success";
+            existingTxn.amount = nairaAmount; // update amount in case it wasn’t set
+            await existingTxn.save({ session });
+
+            // Credit wallet
+            const updatedWallet = await Wallet.findOneAndUpdate(
+              { user: buyer._id, userType: "Buyer" },
+              { $inc: { balance: nairaAmount } },
+              { new: true, upsert: true, session }
+            );
+
+            console.log("✅ Wallet credited (from pending):", {
+              user: buyer.email,
+              newBalance: updatedWallet.balance,
+            });
+
+            await session.commitTransaction();
+            session.endSession();
+            return res.sendStatus(200);
+          }
+        } else {
+          // ✅ Create new transaction if none exists
+          const newTxn = await Transaction.create(
+            [
+              {
+                user: buyer._id,
+                userType: "Buyer",
+                reference: data.reference,
+                type: "deposit",
+                amount: nairaAmount,
+                status: "success",
+              },
+            ],
+            { session }
+          );
+          console.log("📝 New transaction created:", newTxn[0]);
+
+          // Credit wallet
+          const updatedWallet = await Wallet.findOneAndUpdate(
+            { user: buyer._id, userType: "Buyer" },
+            { $inc: { balance: nairaAmount } },
+            { new: true, upsert: true, session }
+          );
+
+          console.log("✅ Wallet credited (new txn):", {
+            user: buyer.email,
+            newBalance: updatedWallet.balance,
+          });
+        }
 
         await session.commitTransaction();
         session.endSession();
-
-        console.log("🎉 Webhook processing completed successfully for:", buyer.email);
+        console.log("🎉 Webhook processing completed for:", buyer.email);
         return res.sendStatus(200);
       } catch (err) {
         await session.abortTransaction();
@@ -190,8 +212,7 @@ export const paystackWebhook = async (req, res) => {
       }
     }
 
-    // ✅ For other Paystack events, just log and acknowledge
-    console.log("ℹ️ Event not handled:", event);
+    // ✅ For other events
     res.sendStatus(200);
   } catch (error) {
     console.error("❌ Webhook outer error:", error.message);
