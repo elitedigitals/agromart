@@ -9,7 +9,7 @@ router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 
 //route for reset password
-router.get("/reset-password/:token", resetPassword);
+router.post("/reset-password", resetPassword);
 
 //verity email for both buyer and seller
 router.get("/verify-email", verifyEmail);
