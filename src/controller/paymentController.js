@@ -112,10 +112,10 @@ export const paystackWebhook = async (req, res) => {
   try {
     const secret = process.env.PAYSTACK_SECRET_KEY;
 
-    // 🔑 Verify signature
+    // 🔑 Verify Paystack signature
     const hash = crypto
       .createHmac("sha512", secret)
-      .update(req.rawBody) // use rawBody instead of JSON.stringify(req.body)
+      .update(req.rawBody) // must use raw body
       .digest("hex");
 
     if (hash !== req.headers["x-paystack-signature"]) {
@@ -124,70 +124,84 @@ export const paystackWebhook = async (req, res) => {
     }
 
     const { event, data } = req.body;
-    console.log(" Webhook triggered:", req.body.event);
+    console.log("📩 Webhook event received:", event);
+    console.log("📩 Webhook raw data:", JSON.stringify(data, null, 2));
+
     if (event === "charge.success") {
+      console.log("🚀 Processing charge.success for reference:", data.reference);
+
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
+        // ✅ Find buyer by email
         const buyer = await Buyer.findOne({ email: data.customer.email }).session(session);
-        if (!buyer) throw new Error("Buyer not found");
+        if (!buyer) {
+          console.error("❌ Buyer not found for email:", data.customer.email);
+          throw new Error("Buyer not found");
+        }
+        console.log("✅ Buyer found:", buyer.email, "ID:", buyer._id);
 
-        // Check if transaction already exists (idempotency)
+        // ✅ Check if transaction already exists
         const existingTxn = await Transaction.findOne({ reference: data.reference }).session(session);
         if (existingTxn) {
-          console.log("⚠️ Transaction already processed:", data.reference);
+          console.warn("⚠️ Transaction already processed:", data.reference);
           await session.abortTransaction();
           session.endSession();
           return res.sendStatus(200);
         }
 
-        // Create transaction
-        await Transaction.create(
+        // ✅ Convert Paystack amount from kobo → naira
+        const nairaAmount = data.amount / 100;
+        console.log("💰 Amount from Paystack:", data.amount, "kobo =>", nairaAmount, "naira");
+
+        // ✅ Create new transaction record
+        const newTxn = await Transaction.create(
           [
             {
               user: buyer._id,
               userType: "Buyer",
               reference: data.reference,
               type: "deposit",
-              amount: data.amount / 100,
+              amount: nairaAmount,
               status: "success",
             },
           ],
           { session }
         );
+        console.log("📝 Transaction created:", newTxn[0]);
 
-        // Update wallet
-        let wallet = await Wallet.findOne({ user: buyer._id, userType: "Buyer" }).session(session);
-        if (!wallet) {
-          wallet = await Wallet.create(
-            [{ user: buyer._id, userType: "Buyer", balance: 0 }],
-            { session }
-          );
-          wallet = wallet[0];
-        }
+        // ✅ Update or create wallet atomically
+        const updatedWallet = await Wallet.findOneAndUpdate(
+          { user: buyer._id, userType: "Buyer" },
+          { $inc: { balance: nairaAmount } }, // increment balance
+          { new: true, upsert: true, session }
+        );
 
-        wallet.balance += data.amount / 100;
-        await wallet.save({ session });
+        console.log("✅ Wallet updated:", {
+          user: buyer.email,
+          walletId: updatedWallet._id,
+          newBalance: updatedWallet.balance,
+        });
 
         await session.commitTransaction();
         session.endSession();
 
-        console.log("✅ Wallet credited for:", buyer.email, data.amount / 100);
+        console.log("🎉 Webhook processing completed successfully for:", buyer.email);
         return res.sendStatus(200);
       } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        console.error("Webhook error:", err.message);
+        console.error("❌ Webhook error inside transaction:", err.message);
         return res.sendStatus(500);
       }
     }
 
-    // For other Paystack events, just acknowledge
+    // ✅ For other Paystack events, just log and acknowledge
+    console.log("ℹ️ Event not handled:", event);
     res.sendStatus(200);
   } catch (error) {
-    console.error("Webhook error:", error.message);
+    console.error("❌ Webhook outer error:", error.message);
     res.sendStatus(500);
   }
 };
-
