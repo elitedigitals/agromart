@@ -29,7 +29,7 @@ export const initDeposit = async (req, res) => {
         email: buyer.email,
         amount: amount * 100, // Paystack expects kobo
         metadata: { buyerId: buyer._id.toString() },
-        callback_url: `${process.env.BASE_URL}/payment/callback`, // Redirect after payment
+        callback_url: `${process.env.BASE_URL}/payment/deposit/verify`, // Redirect after payment
       },
       {
         headers: {
@@ -105,7 +105,6 @@ export const verifyDeposit = async (req, res) => {
 };
 
 /**
- * ========== PAYSTACK WEBHOOK ==========
  * This is the source of truth
  */
 // ========== WEBHOOK ==========
