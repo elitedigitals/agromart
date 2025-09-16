@@ -45,7 +45,7 @@ const sellerSchema = new mongoose.Schema(
     storeName: {
       type: String
     },
-    location: {
+    address: {
       type: String
     }
   },
