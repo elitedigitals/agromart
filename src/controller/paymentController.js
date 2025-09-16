@@ -109,12 +109,6 @@ export const verifyDeposit = async (req, res) => {
  * This is the source of truth
  */
 // ========== WEBHOOK ==========
-import crypto from "crypto";
-import mongoose from "mongoose";
-import Transaction from "../models/transactionModel.js";
-import Wallet from "../models/walletModel.js";
-import Buyer from "../models/buyerModel.js";
-
 export const paystackWebhook = async (req, res) => {
   try {
     const secret = process.env.PAYSTACK_SECRET_KEY;
@@ -131,7 +125,7 @@ export const paystackWebhook = async (req, res) => {
     }
 
     const { event, data } = req.body;
-    console.log("⚠️ Webhook triggered:", req.body.event);
+    console.log(" Webhook triggered:", req.body.event);
     if (event === "charge.success") {
       const session = await mongoose.startSession();
       session.startTransaction();
