@@ -2,6 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import Transaction from "../model/transaction.js";
 import Wallet from "../model/wallet.js";
+import RevenueWallet from "../model/revenure.js";
 import Buyer from "../model/buyer.js";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -21,23 +22,29 @@ export const initDeposit = async (req, res) => {
 
     const buyer = await Buyer.findById(userId);
     if (!buyer) return res.status(404).json({ message: "Buyer not found" });
-
+    
+    //calculate fee rate
+    const feeRate = 0.02; // 2%
+    const fee = amount * feeRate;
+    const totalCharge = amount + fee;
     // Call Paystack init
-    const response = await axios.post(
+const response = await axios.post(
       "https://api.paystack.co/transaction/initialize",
       {
         email: buyer.email,
-        amount: amount * 100, // Paystack expects kobo
-        metadata: { buyerId: buyer._id.toString() },
-        callback_url: `${process.env.BASE_URL}/payment/deposit/verify`, // Redirect after payment
+        amount: totalCharge * 100, // kobo
+        callback_url: `${process.env.CLIENT_URL}/payment/deposit/verify`,
+        metadata: {
+          buyerId: buyer._id.toString(),
+          depositAmount: amount, // what actually goes into wallet
+          fee,
+        },
       },
       {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
       }
     );
+
 
     const paystackData = response.data.data;
 
@@ -48,6 +55,7 @@ export const initDeposit = async (req, res) => {
       reference: paystackData.reference,
       type: "deposit",
       amount,
+      fee,
       status: "pending",
     });
 
@@ -86,7 +94,7 @@ export const verifyDeposit = async (req, res) => {
 
     console.log(`[VERIFY] Paystack verification result: Ref ${reference}, Status: ${data.status}`);
 
-    // 🚨 Do NOT touch DB here, leave wallet & transaction update to webhook
+    //  Do NOT touch DB here, leave wallet & transaction update to webhook
     return res.status(200).json({
       status: data.status,
       reference: data.reference,
@@ -99,71 +107,85 @@ export const verifyDeposit = async (req, res) => {
   }
 };
 
-//  * This is the source of truth 
+
 // ========== WEBHOOK ==========
 export const paystackWebhook = async (req, res) => {
   try {
     const secret = process.env.PAYSTACK_SECRET_KEY;
 
-    // 🔑 Verify Paystack signature
+    // Verify Paystack signature
     const hash = crypto
       .createHmac("sha512", secret)
-      .update(req.rawBody) // rawBody middleware is required
+      .update(req.rawBody) // rawBody middleware required
       .digest("hex");
 
     if (hash !== req.headers["x-paystack-signature"]) {
-      console.error("❌ Invalid Paystack signature");
+      console.error(" Invalid Paystack signature");
       return res.sendStatus(401);
     }
 
     const { event, data } = req.body;
-    console.log("📩 Webhook event received:", event);
-    console.log("📩 Webhook raw data:", JSON.stringify(data, null, 2));
+    console.log(" Webhook event received:", event);
+    console.log(" Webhook raw data:", JSON.stringify(data, null, 2));
 
     if (event === "charge.success") {
-      console.log("🚀 Processing charge.success for reference:", data.reference);
+      console.log("⚡ Processing charge.success for reference:", data.reference);
 
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        // ✅ Find buyer
+        // Find buyer
         const buyer = await Buyer.findOne({ email: data.customer.email }).session(session);
         if (!buyer) {
-          console.error("❌ Buyer not found:", data.customer.email);
+          console.error(" Buyer not found:", data.customer.email);
           throw new Error("Buyer not found");
         }
 
-        const nairaAmount = data.amount / 100;
+        // Extract metadata to know deposit vs fee
+        const nairaAmount = data.amount / 100; // total charged
+        const depositAmount = data.metadata?.depositAmount || nairaAmount;
+        const fee = data.metadata?.fee || 0;
 
-        // ✅ Find existing transaction
+        // Find existing transaction
         let existingTxn = await Transaction.findOne({ reference: data.reference }).session(session);
 
         if (existingTxn) {
           if (existingTxn.status === "success") {
-            console.warn("⚠️ Transaction already processed successfully:", data.reference);
+            console.warn(" Transaction already processed successfully:", data.reference);
             await session.abortTransaction();
             session.endSession();
             return res.sendStatus(200);
           }
 
           if (existingTxn.status === "pending" && data.status === "success") {
-            console.log("🔄 Updating pending transaction to success:", data.reference);
+            console.log(" Updating pending transaction to success:", data.reference);
 
             existingTxn.status = "success";
-            existingTxn.amount = nairaAmount; // update amount in case it wasn’t set
+            existingTxn.amount = depositAmount;
             await existingTxn.save({ session });
 
-            // Credit wallet
+            // Credit user wallet
             const updatedWallet = await Wallet.findOneAndUpdate(
               { user: buyer._id, userType: "Buyer" },
-              { $inc: { balance: nairaAmount } },
+              { $inc: { balance: depositAmount } },
               { new: true, upsert: true, session }
             );
 
-            console.log("✅ Wallet credited (from pending):", {
+            // Credit revenue wallet
+            const updatedRevenue = await RevenueWallet.findOneAndUpdate(
+              {},
+              { $inc: { balance: fee } },
+              { new: true, upsert: true, session }
+            );
+
+            console.log(" Wallet credited (from pending):", {
               user: buyer.email,
               newBalance: updatedWallet.balance,
+            });
+            console.log(" Revenue wallet credited:", {
+              fee,
+              newRevenueBalance: updatedRevenue.balance,
             });
 
             await session.commitTransaction();
@@ -171,7 +193,7 @@ export const paystackWebhook = async (req, res) => {
             return res.sendStatus(200);
           }
         } else {
-          // ✅ Create new transaction if none exists
+          // Create new transaction
           const newTxn = await Transaction.create(
             [
               {
@@ -179,43 +201,56 @@ export const paystackWebhook = async (req, res) => {
                 userType: "Buyer",
                 reference: data.reference,
                 type: "deposit",
-                amount: nairaAmount,
+                amount: depositAmount,
+                fee,
                 status: "success",
               },
             ],
             { session }
           );
-          console.log("📝 New transaction created:", newTxn[0]);
+          console.log(" New transaction created:", newTxn[0]);
 
-          // Credit wallet
+          // Credit user wallet
           const updatedWallet = await Wallet.findOneAndUpdate(
             { user: buyer._id, userType: "Buyer" },
-            { $inc: { balance: nairaAmount } },
+            { $inc: { balance: depositAmount } },
             { new: true, upsert: true, session }
           );
 
-          console.log("✅ Wallet credited (new txn):", {
+          // Credit revenue wallet
+          const updatedRevenue = await RevenueWallet.findOneAndUpdate(
+            {},
+            { $inc: { balance: fee } },
+            { new: true, upsert: true, session }
+          );
+
+          console.log(" Wallet credited (new txn):", {
             user: buyer.email,
             newBalance: updatedWallet.balance,
+          });
+          console.log(" Revenue wallet credited (new txn):", {
+            fee,
+            newRevenueBalance: updatedRevenue.balance,
           });
         }
 
         await session.commitTransaction();
         session.endSession();
-        console.log("🎉 Webhook processing completed for:", buyer.email);
+        console.log(" Webhook processing completed for:", buyer.email);
         return res.sendStatus(200);
       } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        console.error("❌ Webhook error inside transaction:", err.message);
+        console.error(" Webhook error inside transaction:", err.message);
         return res.sendStatus(500);
       }
     }
 
-    // ✅ For other events
+    //  For other events
     res.sendStatus(200);
   } catch (error) {
-    console.error("❌ Webhook outer error:", error.message);
+    console.error(" Webhook outer error:", error.message);
     res.sendStatus(500);
   }
 };
+

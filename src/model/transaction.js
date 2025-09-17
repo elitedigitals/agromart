@@ -33,6 +33,9 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       required: true
     },
+    fee: {
+      type: Number,
+    },
     status: {
       type: String,
       enum: ["pending", "success", "failed"],

@@ -4,7 +4,7 @@ import { sendEmail } from '../config/email.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL = process.env.CLIENT_URL;
 
 // Helper function to send verification email
 export const sendVerificationEmail = async (email, emailToken, name = 'there') => {
