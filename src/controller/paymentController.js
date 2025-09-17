@@ -27,12 +27,14 @@ export const initDeposit = async (req, res) => {
     const feeRate = 0.02; // 2%
     const fee = amount * feeRate;
     const totalCharge = amount + fee;
+    // Ensure no floating-point issues
+    const koboAmount = Math.round(totalCharge * 100);
     // Call Paystack init
 const response = await axios.post(
       "https://api.paystack.co/transaction/initialize",
       {
         email: buyer.email,
-        amount: totalCharge * 100, // kobo
+        amount: koboAmount * 100, // kobo
         callback_url: `${process.env.CLIENT_URL}/payment/deposit/verify`,
         metadata: {
           buyerId: buyer._id.toString(),
