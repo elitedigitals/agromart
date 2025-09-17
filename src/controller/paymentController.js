@@ -13,28 +13,34 @@ dotenv.config();
  */
 export const initDeposit = async (req, res) => {
   try {
-    const { amount } = req.body;
+    let { amount } = req.body;
     const userId = req.user._id;
 
-    if (!amount || amount <= 0) {
+    // Sanitize amount (remove commas, force number)
+    amount = Number(String(amount).replace(/,/g, ""));
+    if (!amount || isNaN(amount) || amount <= 0) {
       return res.status(400).json({ message: "Invalid deposit amount" });
     }
 
     const buyer = await Buyer.findById(userId);
-    if (!buyer) return res.status(404).json({ message: "Buyer not found" });
-    
-    //calculate fee rate
+    if (!buyer) {
+      return res.status(404).json({ message: "Buyer not found" });
+    }
+
+    //  Calculate fee and total
     const feeRate = 0.02; // 2%
-    const fee = amount * feeRate;
+    const fee = Math.round(amount * feeRate); // round fee
     const totalCharge = amount + fee;
-    // Ensure no floating-point issues
-    const koboAmount = Math.round(totalCharge * 100);
-    // Call Paystack init
-const response = await axios.post(
+
+    //  Convert to kobo
+    const koboAmount = totalCharge * 100;
+
+    //  Call Paystack
+    const response = await axios.post(
       "https://api.paystack.co/transaction/initialize",
       {
         email: buyer.email,
-        amount: koboAmount, // kobo
+        amount: koboAmount, // in kobo
         callback_url: `${process.env.CLIENT_URL}/payment/deposit/verify`,
         metadata: {
           buyerId: buyer._id.toString(),
@@ -43,36 +49,24 @@ const response = await axios.post(
         },
       },
       {
-        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
       }
     );
 
-
     const paystackData = response.data.data;
-
-    // Save pending transaction in DB
-    await Transaction.create({
-      user: buyer._id,
-      userType: "Buyer",
-      reference: paystackData.reference,
-      type: "deposit",
-      amount,
-      fee,
-      status: "pending",
-    });
-
-    console.log(`[INIT] Deposit started for Buyer ${buyer._id}, Ref: ${paystackData.reference}`);
-
-    return res.status(200).json({
-      authorization_url: paystackData.authorization_url,
-      access_code: paystackData.access_code,
+    return res.json({
+      authorizationUrl: paystackData.authorization_url,
+      accessCode: paystackData.access_code,
       reference: paystackData.reference,
     });
   } catch (error) {
-    console.error("InitDeposit Error:", error.response?.data || error.message);
-    res.status(500).json({ message: "Payment init failed" });
+    console.error("Deposit init error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
+
 
 
 //   ========== VERIFY DEPOSIT ==========
