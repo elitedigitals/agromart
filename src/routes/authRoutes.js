@@ -12,6 +12,6 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
 //verity email for both buyer and seller
-router.get("/verify-email", verifyEmail);
+router.post("/verify-email", verifyEmail);
 
 export default router;

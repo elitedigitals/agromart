@@ -137,7 +137,7 @@ export const resetPassword = async (req, res) => {
 
 //Verify email
 export const verifyEmail = async (req, res) => {
-  const {token} = req.query;
+  const {token} = req.body;
   try {
     if (!token) {
       return res.status(400).json({ message: "Invalid request" });
