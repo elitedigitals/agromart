@@ -34,7 +34,7 @@ const response = await axios.post(
       "https://api.paystack.co/transaction/initialize",
       {
         email: buyer.email,
-        amount: koboAmount * 100, // kobo
+        amount: koboAmount, // kobo
         callback_url: `${process.env.CLIENT_URL}/payment/deposit/verify`,
         metadata: {
           buyerId: buyer._id.toString(),
