@@ -12,7 +12,6 @@ const buyerSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-    
     },
     role: {
         type: String,
