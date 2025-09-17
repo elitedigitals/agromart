@@ -56,11 +56,26 @@ export const initDeposit = async (req, res) => {
     );
 
     const paystackData = response.data.data;
+    
+    // Create pending transaction before redirect
+    await Transaction.create({
+      user: buyer._id,
+      userType: "Buyer",
+      reference: paystackData.reference,
+      type: "deposit",
+      amount: amount,      // actual deposit into wallet
+      fee: fee,            // goes to revenue later
+      status: "pending",
+    });
+    console.log(`[INIT] Deposit initiated: User ${buyer.email}, Amount: ${amount}, Fee: ${fee}, Total Charged: ${totalCharge}, Ref: ${paystackData.reference}`);
+
+    // Return authorization URL to frontend
     return res.json({
       authorizationUrl: paystackData.authorization_url,
       accessCode: paystackData.access_code,
       reference: paystackData.reference,
     });
+    
   } catch (error) {
     console.error("Deposit init error:", error.response?.data || error.message);
     res.status(500).json({ message: "Something went wrong" });
