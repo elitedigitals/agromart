@@ -72,7 +72,7 @@ export const requestWithdrawal = async (req, res) => {
     session.endSession();
 
     // --------------------
-    // Paystack transfer
+    // Paystack transfer 
     // --------------------
     try {
       let paystackRecipient = recipientCode;
