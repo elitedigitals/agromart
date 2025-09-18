@@ -11,8 +11,10 @@ const buyerSchema = new mongoose.Schema(
       unique: true
     },
     phone: {
-      type: String,
-    },
+    type: String,
+    unique: true,
+    sparse: true   // <-- important
+},
     role: {
         type: String,
         default: "Buyer"
