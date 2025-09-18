@@ -7,7 +7,7 @@ import Product from "../model/product.js";
 export const placeOrder = async (req, res) => {
   try {
     const { productId } = req.body;
-    const buyerId = req.user.id; // assume auth middleware sets req.user
+    const buyerId = req.user._id; // assume auth middleware sets req.user
     const buyerType = "Buyer";
 
     // 1. Get product
