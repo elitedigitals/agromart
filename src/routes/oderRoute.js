@@ -7,3 +7,5 @@ const router = express.Router();
 
 // Buyer places order
 router.post("/order/place", protect, authorize("Buyer"), placeOrder);
+
+export default router;
