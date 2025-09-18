@@ -11,7 +11,11 @@ router.get("/escrows/my-transactions", protect, authorize("Buyer", "Seller"), as
     res.send("Get my escrow transactions - to be implemented");
 });
 // Seller confirms delivery
+<<<<<<< HEAD
 router.post("/escrow/confirm-delivery", protect, authorize("Seller"), confirmDelivery);
+=======
+router.post("/escrow/mark-delivery", protect, authorize("Seller"), confirmDelivery);
+>>>>>>> e512bdd (Initial commit after fixing corruption)
 
 //buyer confirms delivery → release escrow to seller
 router.post("/escrow/confirm-delivery", protect, authorize("Buyer"), confirmDelivery);
