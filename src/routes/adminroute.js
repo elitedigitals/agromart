@@ -5,5 +5,5 @@
 
 // Only admin can approve
 // router.post("/withdrawals/:withdrawalId/approve",  approveWithdrawal);
-
+//router.post("/withdrawals/:withdrawalId/reject", isAdmin, rejectWithdrawal);
 //export default router;

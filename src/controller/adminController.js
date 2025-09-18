@@ -1,3 +1,9 @@
+import mongoose from "mongoose";
+import Wallet from "../models/Wallet.js";
+import Withdrawal from "../models/Withdrawal.js";
+import RevenueWallet from "../models/RevenueWallet.js";
+
+
 //get all sellers
 export const getAllSellers = async (req, res) => {
     try {
@@ -169,6 +175,58 @@ export const approveWithdrawal = async (req, res) => {
     }
   } catch (err) {
     console.error("approveWithdrawal error:", err.response?.data || err.message || err);
+    return res.status(500).json({ message: "Something went wrong", error: err.message || err });
+  }
+};
+
+//reject seller withdrawal
+export const rejectWithdrawal = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    const { withdrawalId } = req.params;
+    const { reason } = req.body; // admin provides reason for rejection
+
+    const withdrawal = await Withdrawal.findById(withdrawalId).session(session);
+    if (!withdrawal) {
+      return res.status(404).json({ message: "Withdrawal not found" });
+    }
+
+    if (withdrawal.status !== "awaiting_admin") {
+      return res.status(400).json({ message: "This withdrawal is not awaiting approval" });
+    }
+
+    session.startTransaction();
+
+    // Refund seller wallet
+    await Wallet.findOneAndUpdate(
+      { user: withdrawal.seller, userType: "Seller" },
+      { $inc: { balance: withdrawal.amount } },
+      { session }
+    );
+
+    // Remove fee from revenue wallet
+    await RevenueWallet.findOneAndUpdate(
+      {},
+      { $inc: { balance: -withdrawal.fee } },
+      { session }
+    );
+
+    // Mark withdrawal as rejected
+    withdrawal.status = "rejected";
+    withdrawal.rejectionReason = reason || "Rejected by admin";
+    await withdrawal.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Withdrawal rejected and seller refunded",
+      withdrawalId: withdrawal._id,
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("rejectWithdrawal error:", err.message || err);
     return res.status(500).json({ message: "Something went wrong", error: err.message || err });
   }
 };
