@@ -7,7 +7,7 @@ import axios from "axios";
 export const requestWithdrawal = async (req, res) => {
   const session = await mongoose.startSession();
   try {
-    const { amount, bankCode, accountNumber } = req.body;
+    const { amount } = req.body;
     const sellerId = req.user._id;
 
     // sanitize & validate amount (NGN)
@@ -23,6 +23,14 @@ export const requestWithdrawal = async (req, res) => {
       return res.status(400).json({ message: "Amount too small after fees" });
     }
 
+    // Fetch seller + bank details
+    const seller = await Seller.findById(sellerId);
+    if (!seller || !seller.bankDetails) {
+      return res.status(400).json({ message: "Please add bank details first" });
+    }
+
+    const { accountName, accountNumber, bankCode, bankName, recipientCode } = seller.bankDetails;
+
     // Start DB transaction: deduct seller wallet and credit revenue wallet, create withdrawal record
     session.startTransaction();
     const sellerWallet = await Wallet.findOne({ user: sellerId, userType: "Seller" }).session(session);
@@ -37,22 +45,21 @@ export const requestWithdrawal = async (req, res) => {
     await sellerWallet.save({ session });
 
     // Credit revenue wallet (single document; upsert if missing)
-    const revenue = await RevenueWallet.findOneAndUpdate(
+    await RevenueWallet.findOneAndUpdate(
       {},
       { $inc: { balance: fee } },
       { new: true, upsert: true, session }
     );
 
     // Create withdrawal record (status pending)
-    const withdrawal = await Withdrawal.create(
+    const [withdrawal] = await Withdrawal.create(
       [
         {
           seller: sellerId,
           amount: nairaAmount,
           fee,
           netAmount,
-          bankCode,
-          bankName: null,            // optional, fill from frontend if you pass it
+          bankName,
           accountNumber,
           status: "pending",
         },
@@ -60,89 +67,85 @@ export const requestWithdrawal = async (req, res) => {
       { session }
     );
 
-    // commit the DB transaction before calling external API
+    // commit DB transaction before hitting Paystack
     await session.commitTransaction();
     session.endSession();
 
     // --------------------
-    // Now interact with Paystack (outside DB transaction)
+    // Paystack transfer
     // --------------------
-    // We will create a transfer recipient, then initiate transfer.
     try {
-      // Optionally, get seller name (if not passed in req.user)
-      let sellerName = req.user?.fullName || req.user?.name;
-      if (!sellerName) {
-        const sellerDoc = await Seller.findById(sellerId).select("fullName name");
-        sellerName = sellerDoc?.fullName || sellerDoc?.name || "Recipient";
+      let paystackRecipient = recipientCode;
+
+      // If seller has no recipientCode yet → create one
+      if (!paystackRecipient) {
+        const recipientResp = await axios.post(
+          "https://api.paystack.co/transferrecipient",
+          {
+            type: "nuban",
+            name: accountName,
+            account_number: accountNumber,
+            bank_code: bankCode,
+            currency: "NGN",
+          },
+          { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` } }
+        );
+        paystackRecipient = recipientResp.data.data.recipient_code;
+
+        // Save it to seller record
+        seller.bankDetails.recipientCode = paystackRecipient;
+        await seller.save();
       }
 
-      // Create recipient
-      const recipientResp = await axios.post(
-        "https://api.paystack.co/transferrecipient",
-        {
-          type: "nuban",
-          name: sellerName,
-          account_number: accountNumber,
-          bank_code: bankCode,
-          currency: "NGN",
-        },
-        { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` } }
-      );
-      const recipientCode = recipientResp.data.data.recipient_code;
-
-      // Initiate transfer: Paystack expects amount in kobo
+      // Initiate transfer: Paystack expects kobo
       const transferResp = await axios.post(
         "https://api.paystack.co/transfer",
         {
           source: "balance",
           reason: "Seller Withdrawal",
-          amount: Math.round(netAmount * 100), // convert NGN -> kobo
-          recipient: recipientCode,
-          reference: String(withdrawal[0]._id), // you can use withdrawal id as reference
+          amount: Math.round(netAmount * 100), // NGN → kobo
+          recipient: paystackRecipient,
+          reference: String(withdrawal._id),
         },
         { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` } }
       );
 
-      // update withdrawal doc with transfer info
+      // update withdrawal doc
       await Withdrawal.findByIdAndUpdate(
-        withdrawal[0]._id,
+        withdrawal._id,
         {
-          recipientCode,
           reference: transferResp.data.data.reference,
-          status: "processing", // waiting for Paystack webhook final status
+          status: "processing",
         },
         { new: true }
       );
 
       return res.status(200).json({
-        message: "Withdrawal initiated and transfer started",
-        withdrawalId: withdrawal[0]._id,
+        message: "Withdrawal initiated successfully",
+        withdrawalId: withdrawal._id,
       });
     } catch (payErr) {
-      // On Paystack failure, attempt to refund seller and remove fee from revenue wallet
+      // On Paystack failure → rollback
       console.error("Paystack transfer error:", payErr.response?.data || payErr.message);
 
       const cleanupSession = await mongoose.startSession();
       try {
         cleanupSession.startTransaction();
 
-        // refund seller wallet
         await Wallet.findOneAndUpdate(
           { user: sellerId, userType: "Seller" },
           { $inc: { balance: nairaAmount } },
           { session: cleanupSession }
         );
 
-        // remove fee from revenue wallet
         await RevenueWallet.findOneAndUpdate(
           {},
           { $inc: { balance: -fee } },
           { session: cleanupSession }
         );
 
-        // mark withdrawal failed
         await Withdrawal.findByIdAndUpdate(
-          withdrawal[0]._id,
+          withdrawal._id,
           { status: "failed", failureReason: payErr.response?.data || payErr.message },
           { session: cleanupSession }
         );
@@ -151,14 +154,13 @@ export const requestWithdrawal = async (req, res) => {
         cleanupSession.endSession();
 
         return res.status(500).json({
-          message: "Transfer failed. Seller refunded. Withdrawal marked failed.",
+          message: "Transfer failed. Seller refunded.",
           error: payErr.response?.data || payErr.message,
         });
       } catch (cleanupErr) {
         await cleanupSession.abortTransaction();
         cleanupSession.endSession();
         console.error("Cleanup failed:", cleanupErr);
-        // highly critical: manual reconciliation may be required
         return res.status(500).json({
           message: "Critical error. Manual reconciliation required.",
           error: cleanupErr.message,
@@ -166,12 +168,12 @@ export const requestWithdrawal = async (req, res) => {
       }
     }
   } catch (err) {
-    // global catch
     try { await session.abortTransaction(); session.endSession(); } catch (e) {}
     console.error("requestWithdrawal error:", err.response?.data || err.message || err);
     return res.status(500).json({ message: "Something went wrong", error: err.message || err });
   }
 };
+
 
 
 //get all withdrawals - admin
