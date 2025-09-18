@@ -3,6 +3,8 @@ import RevenueWallet from "../models/RevenueWallet.js";
 import Withdrawal from "../models/Withdrawal.js";
 import axios from "axios";
 
+
+//seller requests a withdrawal
 export const requestWithdrawal = async (req, res) => {
   try {
     const { amount, bankCode, accountNumber } = req.body;
@@ -74,6 +76,43 @@ export const requestWithdrawal = async (req, res) => {
 
   } catch (error) {
     console.error("Withdrawal error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+//get all withdrawals - admin
+export const getAllWithdrawals = async (req, res) => {
+  try {
+    const withdrawals = await Withdrawal.find().populate("seller", "name email");   
+    res.json(withdrawals);
+  } catch (err) {
+    console.error("getAllWithdrawals error:", err.message);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+//approve a withdrawal - admin
+export const approveWithdrawal = async (req, res) => {
+  try {
+    const { withdrawalId } = req.body;
+
+    const withdrawal = await Withdrawal.findById(withdrawalId);
+    if (!withdrawal) return res.status(404).json({ message: "Withdrawal not found" });
+
+    if (withdrawal.status !== "pending") {
+      return res.status(400).json({ message: "Already processed" });
+    }
+
+    // Here → trigger Paystack transfer with withdrawal.netAmount
+    // Example: call Paystack transfer API
+
+    withdrawal.status = "processing";
+    await withdrawal.save();
+
+    return res.json({ message: "Withdrawal approved. Transfer initiated.", withdrawal });
+  } catch (err) {
+    console.error("approveWithdrawal error:", err.message);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
