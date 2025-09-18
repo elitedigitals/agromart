@@ -47,7 +47,14 @@ const sellerSchema = new mongoose.Schema(
     },
     address: {
       type: String
-    }
+    },
+    bankDetails: {
+    accountName: String,
+    accountNumber: String,
+    bankName: String,
+    bankCode: String,
+    recipientCode: String, // returned by Paystack transferrecipient API
+  },
   },
   { timestamps: true }
 );

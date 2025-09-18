@@ -112,3 +112,49 @@ export const deleteSellerProfile = async (req, res) => {
     }
 };
 
+
+//add sellers bank details
+export const saveBankDetails = async (req, res) => {
+  try {
+    const sellerId = req.user._id;
+    const { accountName, accountNumber, bankCode, bankName } = req.body;
+
+    if (!accountName || !accountNumber || !bankCode) {
+      return res.status(400).json({ message: "Missing bank details" });
+    }
+
+    // Create Paystack transfer recipient
+    const response = await axios.post(
+      "https://api.paystack.co/transferrecipient",
+      {
+        type: "nuban",
+        name: accountName,
+        account_number: accountNumber,
+        bank_code: bankCode,
+        currency: "NGN",
+      },
+      {
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      }
+    );
+
+    const recipientCode = response.data.data.recipient_code;
+
+    // Save details in seller profile
+    const seller = await Seller.findByIdAndUpdate(
+      sellerId,
+      {
+        bankDetails: { accountName, accountNumber, bankName, bankCode, recipientCode },
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      message: "Bank details saved successfully",
+      bankDetails: seller.bankDetails,
+    });
+  } catch (err) {
+    console.error("Error saving bank details:", err.response?.data || err.message);
+    res.status(500).json({ message: "Unable to save bank details" });
+  }
+};

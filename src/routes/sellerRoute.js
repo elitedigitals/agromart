@@ -1,4 +1,4 @@
-import { getSellerProfile, updateSellerProfile, deleteSellerProfile, sellerSignup } from "../controller/sellerController.js";
+import { getSellerProfile, updateSellerProfile, deleteSellerProfile, sellerSignup, saveBankDetails } from "../controller/sellerController.js";
 import { protect } from "../middleware/authentication.js";
 import { authorize } from "../middleware/authorization.js";
 import express from "express";
@@ -26,6 +26,6 @@ router.put("/update-profile", protect, authorize("seller"), updateSellerProfile)
 router.delete("/delete-account", protect, authorize("seller"), deleteSellerProfile);
 
 
-
-
+//add sellers bank details
+router.post("/add-bank-details", protect, authorize("seller"), saveBankDetails);
 export default router;
