@@ -18,7 +18,7 @@ export const placeOrder = async (req, res) => {
     const sellerId = product.seller._id;
 
     // 2. Get buyer wallet
-    const buyerWallet = await Wallet.findOne({ userId: buyerId, userType: buyerType });
+    const buyerWallet = await Wallet.findOne({ user: buyerId, userType: buyerType });
     if (!buyerWallet || buyerWallet.balance < amount) {
       return res.status(400).json({ message: "Insufficient wallet balance" });
     }
