@@ -6,10 +6,10 @@ import { sendVerificationEmail } from "../helpers/sendEmail.js";
 import { v4 as uuidv4 } from "uuid";
 //sign up buyer
 export const signUpBuyer = async (req, res) => {
-    const { fullName, email, password, address } = req.body;
+    const { fullName, email, password, address, phone } = req.body;
     try {
         //validate input
-        if (!fullName || !email || !password || !address) {
+        if (!fullName || !email || !password || !address ||!phone) {
             return res
             .status(400)
             .json({ message: "Please provide all required fields" });
@@ -35,6 +35,7 @@ export const signUpBuyer = async (req, res) => {
         const newBuyer = new Buyer({
             fullName,
             email,
+            phone,
             password: hashedPassword,
             address,
             emailToken,       //save token in DB
