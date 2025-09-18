@@ -47,7 +47,7 @@ export const confirmDelivery = async (req, res) => {
     );
 
     const sellerWallet = await Wallet.findOneAndUpdate(
-      { user: escrow.seller, userType: "Seller" }, // ✅ Seller not Vendor
+      { user: escrow.seller, userType: "Seller" }, //  Seller not Vendor
       { $inc: { escrowBalance: -escrow.amount, balance: escrow.amount } },
       { new: true, session }
     );

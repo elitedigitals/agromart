@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
-import Wallet from "../models/Wallet.js";
-import Withdrawal from "../models/Withdrawal.js";
-import RevenueWallet from "../models/RevenueWallet.js";
+import Wallet from "../model/wallet.js";
+import Withdrawal from "../model/withdrawal.js";
+import Seller from "../model/seller.js";
+import axios from "axios";
+import RevenueWallet from "../model/RevenueWallet.js";
 
 
 //get all sellers

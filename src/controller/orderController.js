@@ -1,6 +1,6 @@
-import Order from "../models/Order.js";
-import Wallet from "../models/Wallet.js";
-import Product from "../models/Product.js";
+import Order from "../model/order.js";
+import Wallet from "../model/wallet.js";
+import Product from "../model/product.js";
 
 
 //buyer places order → hold funds in escrow
