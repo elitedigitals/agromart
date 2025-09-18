@@ -31,7 +31,7 @@ app.use("/api/seller", sellerRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/buyer", buyerRoutes);
 app.use("/api/payment", paymentRoutes);
-app.use("/order", orderRoutes);
+app.use("/api/order", orderRoutes);
 
 
 app.get("/", (req, res) => {
