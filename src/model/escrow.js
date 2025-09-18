@@ -31,9 +31,16 @@ const escrowSchema = new mongoose.Schema(
     },
     refundedAt: {
       type: Date
-    }
+    },
+
+        // track actions
+    buyerConfirmed: { type: Boolean, default: false },
+    sellerDelivered: { type: Boolean, default: false },
+    refundRequested: { type: Boolean, default: false },
   },
+
   { timestamps: true }
 );
 
-export default mongoose.model("Escrow", escrowSchema);
+const Escrow = mongoose.model("Escrow", escrowSchema);
+export default Escrow;

@@ -26,6 +26,11 @@ const orderSchema = new mongoose.Schema(
       required: true
     },
     status: {
+    type: String,
+    enum: ["pending", "in_progress", "completed", "cancelled"],
+    default: "pending",
+  },
+    escrow_status: {
       type: String,
       enum: ["pending", "escrow", "delivered", "disputed", "released"],
       default: "pending"
@@ -34,4 +39,5 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Order", orderSchema);
+const Order = mongoose.model("Order", orderSchema);
+export default Order;

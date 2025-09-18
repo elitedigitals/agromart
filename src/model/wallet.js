@@ -10,11 +10,11 @@ const walletSchema = new mongoose.Schema({
     enum: ["Buyer", "Seller"],
     required: true
   },
-  balance: {
+  balance: {      // available balance
     type: Number,
     default: 0
   },
-  escrowBalance: {
+  escrowBalance: {    // funds held in escrow// not spendable by user
     type: Number,
     default: 0
   }
