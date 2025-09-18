@@ -13,7 +13,8 @@ export const markDelivered = async (req, res) => {
     if (!escrow) return res.status(404).json({ message: "Escrow not found" });
 
     escrow.sellerDelivered = true;
-    escrow.status = "delivered";
+
+    
     await escrow.save();
 
     return res.json({ message: "Order marked as delivered" });

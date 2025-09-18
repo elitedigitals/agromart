@@ -23,7 +23,7 @@ const escrowSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["holding", "released", "refunded", "disputed"],
+      enum: ["holding", "released", "refunded", "disputed", "refund_requested", "delivered"],
       default: "holding"
     },
     releasedAt: {

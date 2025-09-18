@@ -30,6 +30,12 @@ const orderSchema = new mongoose.Schema(
     enum: ["pending", "in_progress", "completed", "cancelled"],
     default: "pending",
   },
+  //escrow amount
+    escrowAmount: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
     escrow_status: {
       type: String,
       enum: ["pending", "escrow", "delivered", "disputed", "released"],
