@@ -34,7 +34,7 @@ export const addProduct = async (req, res) => {
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find()
-      .populate("seller", "name storeName phone avatar address isVerified");
+      .populate("seller", "fullName storeName phone avatar address isVerified");
 
     res.status(200).json(products);
   } catch (error) {
