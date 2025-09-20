@@ -32,15 +32,17 @@ export const addProduct = async (req, res) => {
 
 //get all products
 export const getAllProducts = async (req, res) => {
-    try {
-        const products = await Product.find().populate('seller', 'storeName email');
-        res.status(200).json(products);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
-    }
+  try {
+    const products = await Product.find()
+      .populate("seller", "name storeName phone avatar address isVerified");
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("getAllProducts error:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
 };
+
 //get all products for a seller
 export const getSellerProducts = async (req, res) => {
     try {

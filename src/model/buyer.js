@@ -10,6 +10,9 @@ const buyerSchema = new mongoose.Schema(
       type: String,
       unique: true
     },
+    avatar: {
+      type: String
+    },
     phone: {
     type: String,
     unique: true,
