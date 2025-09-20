@@ -58,6 +58,27 @@ export const sellerSignup = async (req, res) => {
 };
 
 
+//seller wallet
+export const wallet = async (req, res) => {
+  try {
+    const wallet = await Wallet.findOne({ user: req.user._id, userType: "Seller" });
+    const transactions = await Transaction.find({ user: req.user._id, userType: "Seller" })
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.status(200).json({
+      message: "Welcome to Seller Dashboard",
+      Balance: wallet ? wallet.balance : 0,
+      EscrowBalance: wallet ? wallet.escrowBalance : 0,
+      transactions,
+    });
+  } catch (error) {
+    console.error("Dashboard Error:", error.message);
+    res.status(500).json({ message: "Failed to load dashboard" });
+  }
+};
+
+
 
 //get seller profile
 export const getSellerProfile = async (req, res) => {

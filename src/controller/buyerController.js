@@ -58,7 +58,7 @@ export const signUpBuyer = async (req, res) => {
 };
 
 //dashboard route for 
-export const getDashboardData = async (req, res) => {
+export const wallet = async (req, res) => {
   try {
     const wallet = await Wallet.findOne({ user: req.user._id, userType: "Buyer" });
     const transactions = await Transaction.find({ user: req.user._id, userType: "Buyer" })
@@ -67,6 +67,7 @@ export const getDashboardData = async (req, res) => {
 
     res.status(200).json({message: "Welcome to Buyer Dashboard",
       Balance: wallet ? wallet.balance : 0,
+      EscrowBalance: wallet ? wallet.escrowBalance :0,
       transactions,
     });
   } catch (error) {

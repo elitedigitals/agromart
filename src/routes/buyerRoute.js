@@ -1,5 +1,5 @@
 import express from "express";
-import { updateBuyerProfile, getBuyerProfile, signUpBuyer, deleteBuyerProfile, getDashboardData } from "../controller/buyerController.js";
+import { updateBuyerProfile, getBuyerProfile, signUpBuyer, deleteBuyerProfile, wallet } from "../controller/buyerController.js";
 import { protect } from "../middleware/authentication.js";
 import { authorize } from "../middleware/authorization.js";
 const router = express.Router();
@@ -9,7 +9,7 @@ router.post("/register", signUpBuyer);
 
 
 //Dashboard route for buyer
-router.get("/dashboard", protect, authorize("Buyer"), getDashboardData);
+router.get("/wallet", protect, authorize("Buyer"), wallet);
 //route for getting buyer profile
 router.get("/profile", protect, authorize("Buyer"), getBuyerProfile);
 

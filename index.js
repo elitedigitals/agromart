@@ -25,6 +25,9 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
+//product images static folder
+app.use('/uploads', express.static('uploads'));
+
 //routes
 app.use("/api/auth", authRoutes);
 app.use("/api/seller", sellerRoutes);

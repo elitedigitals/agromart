@@ -11,7 +11,7 @@ const router = express.Router();
 router.post("/register", sellerSignup);
 
 
-router.get("/dashboard", protect, authorize("Seller"), (req, res) => {
+router.get("/wallet", protect, authorize("Seller"), (req, res) => {
   res.status(200).json({ message: "Welcome to the seller dashboard!" });
 });
 
