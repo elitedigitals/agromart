@@ -11,13 +11,18 @@ export const addProduct = async (req, res) => {
             return res.status(400).json({ message: "Please provide all required fields" });
         }
         // Create new product
+        let imagePaths = [];
+        if (req.files && req.files.length > 0) {
+        imagePaths = req.files.map((file) => file.path); // store disk path
+        }
+
         const newProduct = new Product({
             name,
             description,
             price,
             category,
             stock,
-            images: req.files ? req.files.map(file => file.path) : [],
+            images: imagePaths,
             seller: sellerId
             });
             await newProduct.save();
