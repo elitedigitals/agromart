@@ -17,6 +17,7 @@ export const addProduct = async (req, res) => {
             price,
             category,
             stock,
+            images: req.files ? req.files.map(file => file.path) : [],
             seller: sellerId
             });
             await newProduct.save();
