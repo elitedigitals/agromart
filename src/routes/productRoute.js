@@ -1,6 +1,6 @@
 import { protect } from "../middleware/authentication.js";
 import { authorize } from "../middleware/authorization.js";
-import { addProduct, getSellerProducts, updateSellerProductById, deleteSellerProductById, getAllProducts } from "../controller/productController.js";
+import { addProduct, getSellerProducts, updateSellerProductById, deleteSellerProductById, getAllProducts, getProductById } from "../controller/productController.js";
 import upload from "../middleware/upload.js"; 
 
 import express from "express";
@@ -9,6 +9,10 @@ const router = express.Router();
 
 //get all products - only for buyers
 router.get("/all", protect, authorize("Buyer"), getAllProducts);
+
+//route to get product by id
+
+router.get("/product/:id", protect, authorize("Buyer"),getProductById);
 //route to add product - only for sellers
 router.post("/add-product", protect, authorize("Seller"), upload.array('images', 5), addProduct);
 
