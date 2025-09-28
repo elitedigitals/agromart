@@ -41,7 +41,7 @@ export const initDeposit = async (req, res) => {
       {
         email: buyer.email,
         amount: koboAmount, // in kobo
-        callback_url: `${process.env.CLIENT_URL}/payment/deposit/verify`,
+        callback_url: `${process.env.CLIENT_URL}/account`,
         metadata: {
           buyerId: buyer._id.toString(),
           depositAmount: amount, // what actually goes into wallet

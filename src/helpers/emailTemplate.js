@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL = process.env.CLIENT_URL ;
 
 const emailTemplates = {
 // Welcome & Email Verification Template
