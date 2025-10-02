@@ -14,4 +14,7 @@ router.post("/reset-password", resetPassword);
 //verity email for both buyer and seller
 router.post("/verify-email", verifyEmail);
 
+//logout route (handled on client side by deleting token)
+
+
 export default router;
