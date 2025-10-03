@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import Wallet from "../model/wallet.js";
 import Transaction from "../model/transaction.js";
 import { sendVerificationEmail } from "../helpers/sendEmail.js";
-import { v4 as uuidv4 } from "uuid";
+import sendOTP from "../helpers/sendSms.js";
 //sign up buyer
 export const signUpBuyer = async (req, res) => {
     const { fullName, email, password, address, phone } = req.body;
@@ -25,11 +25,12 @@ export const signUpBuyer = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         
-        //generate email verification token using uuid
-        const emailToken = uuidv4();
+        //generate email verification otp using math random
+        const emailToken = Math.floor(100000 + Math.random() * 900000).toString(); //6 digit otp
+
         //save token and its expiry (15 minutes from now)
         const emailTokenExpiry = Date.now() + 15 * 60 * 1000; //15 minutes
-        
+        const otp =emailToken;
         //create new buyer
     
         const newBuyer = new Buyer({
@@ -47,6 +48,9 @@ export const signUpBuyer = async (req, res) => {
         //send verification email
         await sendVerificationEmail(newBuyer.email, emailToken, newBuyer.fullName,);
 
+        //send verification emailToken to phone number using sms api
+        await sendOTP(phone, otp);
+        
         //respond with success message
         return res
         .status(201)

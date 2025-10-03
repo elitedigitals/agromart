@@ -4,46 +4,45 @@ dotenv.config();
 const BASE_URL = process.env.CLIENT_URL ;
 
 const emailTemplates = {
-// Welcome & Email Verification Template
-  welcomeTemplate: (name, verifyLink) => ({
-    subject: 'Welcome to AgroMart - Verify Your Account',
-    html: `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Welcome to AgroMart</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
-          <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-              <h2 style="color: #2d572c; margin-top: 0;">Welcome to AgroMart, ${name}!</h2>
-              <p>Thank you for joining Nigeria’s trusted agricultural marketplace.</p>
-              
-              <div style="background: #f8f9fa; padding: 20px; margin: 25px 0; text-align: center; border-radius: 4px; border: 1px dashed #ddd;">
-                  <p style="margin: 0 0 15px 0; color: #555;">Click the button below to verify your account:</p>
-                  
-                  <a href="${verifyLink}" 
-                    style="display: inline-block; background-color: #2d572c; color: #ffffff; padding: 12px 25px; 
-                            text-decoration: none; font-size: 16px; border-radius: 5px; font-weight: bold;">
-                    Verify Account
-                  </a>
+// Welcome & Email Verification with OTP
+welcomeTemplate: (name, emailToken) => ({
+  subject: 'Welcome to AgroMart - Verify Your Account',
+  html: `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to AgroMart</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+            <h2 style="color: #2d572c; margin-top: 0;">Welcome to AgroMart, ${name}!</h2>
+            <p>Thank you for joining Nigeria’s trusted agricultural marketplace.</p>
+            
+            <div style="background: #f8f9fa; padding: 20px; margin: 25px 0; text-align: center; border-radius: 4px; border: 1px dashed #ddd;">
+                <p style="margin: 0 0 15px 0; color: #555;">Use the OTP code below to verify your account:</p>
+                
+                <div style="display: inline-block; background-color: #2d572c; color: #ffffff; padding: 15px 30px; 
+                            font-size: 22px; border-radius: 5px; font-weight: bold; letter-spacing: 5px;">
+                    ${emailToken}
+                </div>
 
-                  <p style="margin: 20px 0 0 0; color: #777; font-size: 14px;">
-                      This link will expire in 5 minutes.
-                  </p>
-              </div>
-              
-              <p style="margin-top: 30px; font-size: 0.9em; color: #777; border-top: 1px solid #eee; padding-top: 20px;">
-                  If you didn’t request this verification, please ignore this email.<br><br>
-                  Thank you,<br>
-                  The AgroMart Team
-              </p>
-          </div>
-      </body>
-      </html>
-    `
-  }),
+                <p style="margin: 20px 0 0 0; color: #777; font-size: 14px;">
+                    This code will expire in 15 minutes.
+                </p>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 0.9em; color: #777; border-top: 1px solid #eee; padding-top: 20px;">
+                If you didn’t request this verification, please ignore this email.<br><br>
+                Thank you,<br>
+                The AgroMart Team
+            </p>
+        </div>
+    </body>
+    </html>
+  `
+}),
 
 
   // Login Alert Template

@@ -137,24 +137,24 @@ export const resetPassword = async (req, res) => {
 
 //Verify email
 export const verifyEmail = async (req, res) => {
-  const {token} = req.body;
+  const {otp} = req.body;
   try {
-    if (!token) {
+    if (!otp) {
       return res.status(400).json({ message: "Invalid request" });
     }
     // search both collections
-    let user = await Seller.findOne({ emailToken: token });
+    let user = await Seller.findOne({ emailToken: otp});
     let userType = "Seller";
     if (!user) {
-      user = await Buyer.findOne({ emailToken: token });
+      user = await Buyer.findOne({ emailToken: otp });
       userType = "Buyer";
     }
     if (!user) {
-      return res.status(400).json({ message: "Invalid token" });
+      return res.status(400).json({ message: "Invalid otp" });
     }
     //check if token is expired
     if (user.emailTokenExpiry < Date.now()) {
-        return res.status(400).json({ message: "Token has expired" });
+        return res.status(400).json({ message: "otp has expired" });
     }
     //check if already verified
     if (user.isVerified) {

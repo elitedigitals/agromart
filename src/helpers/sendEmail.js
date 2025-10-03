@@ -9,8 +9,8 @@ const BASE_URL = process.env.CLIENT_URL;
 // Helper function to send verification email
 export const sendVerificationEmail = async (email, emailToken, name = 'there') => {
     try {
-        const verifyLink = `${BASE_URL}/verify-email?token=${emailToken}`;
-        const verificationTemplate = emailTemplates.welcomeTemplate(name, verifyLink);
+        // const verifyLink = `${BASE_URL}/verify-email?token=${emailToken}`;
+        const verificationTemplate = emailTemplates.welcomeTemplate(name, emailToken);
        
         await sendEmail(
             email,
