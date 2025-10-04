@@ -2,7 +2,9 @@ import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
 
-async function sendOTP(phoneNumber, otp) {
+
+const sendOTP = async (phone, otp) => {
+    
   const smsData = {
     SMS: {
       auth: {
@@ -17,7 +19,7 @@ async function sendOTP(phoneNumber, otp) {
       recipients: {
         gsm: [
           {
-            msidn: phoneNumber,
+            msidn: phone,
             msgid: "unique_msg_id_123", // you can use a random string
           },
         ],
@@ -33,7 +35,13 @@ async function sendOTP(phoneNumber, otp) {
     );
     console.log("SMS Response:", response.data);
   } catch (error) {
-    console.error("SMS sending failed:", error.response?.data || error.message);
+  if (error.response) {
+    console.error("Error response:", error.response.data);
+  } else if (error.request) {
+    console.error("No response received:", error.request);
+  } else {
+    console.error("Error setting up request:", error.message);
   }
+}
 }
 export default sendOTP;
