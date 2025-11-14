@@ -6,6 +6,6 @@ import { placeOrder } from "../controller/orderController.js";
 const router = express.Router();
 
 // Buyer places order
-router.post("/order/place", protect, authorize("Buyer"), placeOrder);
+router.post("/order/place/:id", protect, authorize("Buyer"), placeOrder);
 
 export default router;
