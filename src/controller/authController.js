@@ -33,9 +33,9 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // if (!user.isVerified) {
-      // return res.status(400).json({ message: "Please verify your email to login" });
-    //}
+    if (!user.isVerified) {
+      return res.status(400).json({ message: "Please verify your email to login" });
+    }
 
     //  Use the `role` variable, not user.role
     const payload = { userId: user._id, role };
