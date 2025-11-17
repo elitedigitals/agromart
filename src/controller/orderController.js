@@ -36,7 +36,7 @@ export const placeOrder = async (req, res) => {
       product: productId,
       buyer: buyerId,
       seller: sellerId,
-      amount,
+      totalAmount: amount,
       escrowAmount: amount,
       status: "pending",
     });
