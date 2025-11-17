@@ -46,7 +46,7 @@ export const signUpBuyer = async (req, res) => {
         await newBuyer.save();
 
         //send verification email
-        await sendVerificationEmail(newBuyer.email, emailToken, newBuyer.fullName,);
+        //await sendVerificationEmail(newBuyer.email, emailToken, newBuyer.fullName,);
 
         //send verification emailToken to phone number using sms api
         await sendOTP(phone, otp);

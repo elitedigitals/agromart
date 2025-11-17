@@ -14,6 +14,10 @@ export const placeOrder = async (req, res) => {
     const product = await Product.findById(productId).populate("seller");
     if (!product) return res.status(404).json({ message: "Product not found" });
 
+    //02-10-1997 : check the quantity of the product
+    //if (product.quantity < 1) {
+      //return res.status(400).json({ message: "Product is out of stock" });
+    //}
     const amount = product.price;
     const sellerId = product.seller._id;
 
