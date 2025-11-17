@@ -29,6 +29,7 @@ export const placeOrder = async (req, res) => {
 
     // 3. Deduct from buyer wallet
     buyerWallet.balance -= amount;
+    buyerWallet.escrowBalance += amount;
     await buyerWallet.save();
 
     // 4. Create order with escrow hold
