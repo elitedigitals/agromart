@@ -1,7 +1,7 @@
 import express from "express";
 import { protect } from "../middleware/authentication.js";
 import { authorize } from "../middleware/authorization.js";
-import { requestRefund, approveRefund, confirmDelivery } from "../controller/escrowController.js";
+import { requestRefund, approveRefund, confirmDelivery, markDelivered } from "../controller/escrowController.js";
 
 const router = express.Router();
 
@@ -11,11 +11,7 @@ router.get("/escrows/my-transactions", protect, authorize("Buyer", "Seller"), as
     res.send("Get my escrow transactions - to be implemented");
 });
 // Seller confirms delivery
-<<<<<<< HEAD
-router.post("/escrow/confirm-delivery", protect, authorize("Seller"), confirmDelivery);
-=======
-router.post("/escrow/mark-delivery", protect, authorize("Seller"), confirmDelivery);
->>>>>>> e512bdd (Initial commit after fixing corruption)
+router.post("/escrow/mark-delivery", protect, authorize("Seller"), markDelivered);
 
 //buyer confirms delivery → release escrow to seller
 router.post("/escrow/confirm-delivery", protect, authorize("Buyer"), confirmDelivery);

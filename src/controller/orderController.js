@@ -51,3 +51,38 @@ export const placeOrder = async (req, res) => {
     res.status(500).json({ message: "Error placing order", error: error.message });
   }
 };
+
+//get the buyer orders
+export const getBuyerOrders = async (req, res) => {
+    try {
+        const buyerId = req.user.userId; // Assuming user ID is available in req.user
+        const orders = await Order.find({ buyer: buyerId })
+            .populate("product")
+            .populate("seller", "fullName email phone storeName")
+            .populate("escrowAmount")
+            .populate("escrow_status")
+            .populate("timestamps");
+
+        res.status(200).json(orders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+//The buyer orders to sellers in dela orders receive 
+export const getSellerOrders = async (req, res) => {
+    try {
+        const sellerId = req.user.userId; // Assuming user ID is available in req.user
+        const orders = await Order.find({ seller: sellerId })
+            .populate("product")
+            .populate("buyer", "fullName email phone address")
+            .populate("escrowAmount")
+            .populate("escrow_status")
+            .populate("timestamps");
+        res.status(200).json(orders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};

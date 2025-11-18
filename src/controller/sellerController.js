@@ -1,6 +1,8 @@
 import Seller from "../model/seller.js";
+import Wallet from "../model/wallet.js";
+import Transaction from "../model/transaction.js";
 import bcrypt from "bcryptjs";
-import { v4 as uuidv4 } from "uuid"; 
+import sendOTP from "../helpers/sendSms.js";
 import { sendVerificationEmail } from "../helpers/sendEmail.js";
 
 export const sellerSignup = async (req, res) => {
@@ -18,13 +20,19 @@ export const sellerSignup = async (req, res) => {
       return res.status(400).json({ message: "Account already exists" });
     }
 
+
+    //check if phone number exist 
+    const existingPhone = await Seller.findOne({phone});
+    if (existingPhone) {
+        return res.status(400).json({message: "Phone Number Already Exist"})
+    }
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Generate email verification token (uuid method)
-    const emailToken = uuidv4();
-    // Save token and its expiry (15 minutes from now)
+    const emailToken = Math.floor(100000 + Math.random() * 900000).toString(); //6 digit otp
+    // Save otp and its expiry (15 minutes from now)
     const emailTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
     
 
@@ -45,8 +53,9 @@ export const sellerSignup = async (req, res) => {
     await user.save();
 
     // Send verification email
-    await sendVerificationEmail(user.email, emailToken, user.fullName);
-
+    //await sendVerificationEmail(user.email, emailToken, user.fullName);
+    //send sms
+    await sendOTP(phone,)
     res.status(201).json({
       message: "Account created successfully. Please verify your email to login."
     });

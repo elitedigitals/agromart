@@ -4,6 +4,7 @@ import Wallet from "../model/wallet.js";
 import Transaction from "../model/transaction.js";
 import { sendVerificationEmail } from "../helpers/sendEmail.js";
 import sendOTP from "../helpers/sendSms.js";
+import { response } from "express";
 //sign up buyer
 export const signUpBuyer = async (req, res) => {
     const { fullName, email, password, address, phone } = req.body;
@@ -21,6 +22,13 @@ export const signUpBuyer = async (req, res) => {
             .status(400)
             .json({ message: "Account with this email already exists" });   
         }
+
+        //check if phone number exist 
+        const existingPhone = await Buyer.findOne({phone});
+        if (existingPhone) {
+            return res.status(400).json({message: "Phone Number Already Exist"})
+        }
+
         //hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
