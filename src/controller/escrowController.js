@@ -17,7 +17,7 @@ export const markDelivered = async (req, res) => {
     
     await escrow.save();
 
-    return res.json({ message: "Order marked as delivered" });
+    return res.json({ message: "Order marked as delivered waiting for customer comfirmation" });
   } catch (err) {
     console.error("markDelivered error:", err.message);
     res.status(500).json({ message: "Something went wrong" });
@@ -47,7 +47,7 @@ export const confirmDelivery = async (req, res) => {
     );
 
     const sellerWallet = await Wallet.findOneAndUpdate(
-      { user: escrow.seller, userType: "Seller" }, //  Seller not Vendor
+      { user: escrow.seller, userType: "Seller" }, //  Seller
       { $inc: { escrowBalance: -escrow.amount, balance: escrow.amount } },
       { new: true, session }
     );

@@ -32,6 +32,7 @@ export const placeOrder = async (req, res) => {
     buyerWallet.escrowBalance += amount;
     await buyerWallet.save();
 
+
     // 4. Create order with escrow hold
     const order = new Order({
       product: productId,
@@ -42,6 +43,14 @@ export const placeOrder = async (req, res) => {
       status: "pending",
     });
     await order.save();
+
+
+    //add the transaction amount to seller escrow balance
+    const sellerWallet = await Wallet.findOne({ user: sellerId, userType: "Seller" });
+    if (sellerWallet) {
+      sellerWallet.escrowBalance += amount;
+      await sellerWallet.save();
+    }
 
     res.status(201).json({
       message: "Order placed successfully, funds held in escrow",
@@ -72,16 +81,17 @@ export const getBuyerOrders = async (req, res) => {
 //The buyer orders to sellers in dela orders receive 
 export const getSellerOrders = async (req, res) => {
     try {
-        const sellerId = req.user.userId; // Assuming user ID is available in req.user
+        const sellerId = req.user._id; // Correct seller ID
+
         const orders = await Order.find({ seller: sellerId })
             .populate("product")
-            .populate("buyer", "fullName email phone address")
-            .populate("escrowAmount")
-            .populate("escrow_status")
-            .populate("timestamps");
+            .populate("buyer", "fullName email phone address"); // Valid populate only
+
         res.status(200).json(orders);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server error" });
     }
 };
+
+
