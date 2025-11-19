@@ -7,7 +7,7 @@ import Product from "../model/product.js";
 export const placeOrder = async (req, res) => {
   try {
     const { productId } = req.body;
-    const buyerId = req.user._id; // assume auth middleware sets req.user
+    const buyerId = req.user._id; 
     const buyerType = "Buyer";
 
     // 1. Get product
@@ -32,7 +32,6 @@ export const placeOrder = async (req, res) => {
     buyerWallet.escrowBalance += amount;
     await buyerWallet.save();
 
-
     // 4. Create order with escrow hold
     const order = new Order({
       product: productId,
@@ -44,22 +43,33 @@ export const placeOrder = async (req, res) => {
     });
     await order.save();
 
-
-    //add the transaction amount to seller escrow balance
+    // 5. Add the amount to seller's escrow wallet
     const sellerWallet = await Wallet.findOne({ user: sellerId, userType: "Seller" });
     if (sellerWallet) {
       sellerWallet.escrowBalance += amount;
       await sellerWallet.save();
     }
 
+    // 6. Create an escrow record (THIS WAS MISSING)
+    const escrow = new Escrow({
+      order: order._id,
+      buyer: buyerId,
+      seller: sellerId,
+      amount: amount,
+      status: "holding", // default status
+    });
+    await escrow.save();
+
     res.status(201).json({
       message: "Order placed successfully, funds held in escrow",
       order,
+      escrow, // return escrow
     });
   } catch (error) {
     res.status(500).json({ message: "Error placing order", error: error.message });
   }
 };
+
 
 //get the buyer orders
 export const getBuyerOrders = async (req, res) => {
