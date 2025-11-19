@@ -7,6 +7,7 @@ import productRoutes from "./src/routes/productRoute.js";
 import buyerRoutes from "./src/routes/buyerRoute.js";
 import paymentRoutes from "./src/routes/paymentRoute.js";
 import orderRoutes from "./src/routes/oderRoute.js";
+import escrowRoutes from "./src/routes/escrowRoute.js";
 import cors from "cors";
 
 dotenv.config();
@@ -35,6 +36,7 @@ app.use("/api/product", productRoutes);
 app.use("/api/buyer", buyerRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/order", orderRoutes);
+app.use("/api/escrow", orderRoutes);
 
 
 app.get("/", (req, res) => {
