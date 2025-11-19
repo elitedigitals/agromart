@@ -55,13 +55,11 @@ export const placeOrder = async (req, res) => {
 //get the buyer orders
 export const getBuyerOrders = async (req, res) => {
     try {
-        const buyerId = req.user.userId; // Assuming user ID is available in req.user
+        const buyerId = req.user._id; 
+
         const orders = await Order.find({ buyer: buyerId })
             .populate("product")
-            .populate("seller", "fullName email phone storeName")
-            .populate("escrowAmount")
-            .populate("escrow_status")
-            .populate("timestamps");
+            .populate("seller", "fullName email phone storeName");
 
         res.status(200).json(orders);
     } catch (error) {
@@ -69,6 +67,7 @@ export const getBuyerOrders = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 };
+
 
 //The buyer orders to sellers in dela orders receive 
 export const getSellerOrders = async (req, res) => {

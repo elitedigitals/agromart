@@ -29,7 +29,7 @@ const orderSchema = new mongoose.Schema(
     type: String,
     enum: ["pending", "in_progress", "completed", "cancelled"],
     default: "pending",
-  },
+    },
   //escrow amount
     escrowAmount: {
       type: Number,
