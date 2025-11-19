@@ -1,4 +1,4 @@
-import { getSellerProfile, updateSellerProfile, deleteSellerProfile, sellerSignup, saveBankDetails } from "../controller/sellerController.js";
+import { getSellerProfile, updateSellerProfile, deleteSellerProfile, sellerSignup, saveBankDetails, wallet } from "../controller/sellerController.js";
 import { protect } from "../middleware/authentication.js";
 import { authorize } from "../middleware/authorization.js";
 import express from "express";
@@ -11,9 +11,7 @@ const router = express.Router();
 router.post("/register", sellerSignup);
 
 
-router.get("/wallet", protect, authorize("Seller"), (req, res) => {
-  res.status(200).json({ message: "Welcome to the seller dashboard!" });
-});
+router.get("/wallet", protect, authorize("Seller"),wallet);
 
 //get seller profile
 router.get("/profile", protect, authorize("Seller"), getSellerProfile);
