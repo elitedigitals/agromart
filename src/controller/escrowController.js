@@ -33,8 +33,9 @@ export const confirmDelivery = async (req, res) => {
     const buyerId = req.user._id;
 
     const escrow = await Escrow.findOne({ order: orderId, buyer: buyerId }).session(session);
-    if (!escrow) return res.status(404).json({ message: "Escrow not found" });
-
+    if (!escrow) {
+      return res.status(404).json({ message: "Escrow not found" });
+    }
     if (!escrow.sellerDelivered) {
       return res.status(400).json({ message: "Seller has not marked as delivered yet" });
     }
