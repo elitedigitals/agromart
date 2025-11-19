@@ -1,6 +1,7 @@
 import Order from "../model/order.js";
 import Wallet from "../model/wallet.js";
 import Product from "../model/product.js";
+import Escrow from "../model/escrow.js";
 
 
 //buyer places order → hold funds in escrow
@@ -50,7 +51,7 @@ export const placeOrder = async (req, res) => {
       await sellerWallet.save();
     }
 
-    // 6. Create an escrow record (THIS WAS MISSING)
+    // 6. Create an escrow record 02-10-1997
     const escrow = new Escrow({
       order: order._id,
       buyer: buyerId,
